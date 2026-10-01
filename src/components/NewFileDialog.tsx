@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { X, FileCode, Sparkles, Check, Plus } from 'lucide-react';
 import { CodeFile } from '../types';
 import { INITIAL_FILES } from '../utils/templates';
+import { useTheme } from '../context/ThemeContext';
 
 interface NewFileDialogProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export const NewFileDialog: React.FC<NewFileDialogProps> = ({
   onClose,
   onCreate,
 }) => {
+  const { isDark } = useTheme();
   const [fileName, setFileName] = useState('');
   const [extension, setExtension] = useState('svg');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('blank');
@@ -42,13 +44,12 @@ export const NewFileDialog: React.FC<NewFileDialogProps> = ({
         content = tmpl.content;
       }
     } else {
-      // Default blank templates by extension
       if (cleanExt === 'svg') {
-        content = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">\n  <circle cx="50" cy="50" r="40" fill="#6366f1" />\n</svg>`;
+        content = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">\n  <circle cx="50" cy="50" r="40" fill="#4f46e5" />\n</svg>`;
       } else if (cleanExt === 'html') {
-        content = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <title>New HTML</title>\n</head>\n<body style="background:#0f172a; color:#fff; font-family:sans-serif; padding:20px;">\n  <h1>Hello World</h1>\n  <p>在编辑窗口输入或粘贴代码即可实时预览</p>\n</body>\n</html>`;
+        content = `<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <title>New HTML</title>\n</head>\n<body style="font-family:system-ui, sans-serif; padding:24px;">\n  <h1>Hello World</h1>\n  <p>在编辑窗口输入或粘贴代码即可实时预览</p>\n</body>\n</html>`;
       } else if (cleanExt === 'xml') {
-        content = `<?xml version="1.0" encoding="utf-8"?>\n<root>\n  <item id="1">示例数据</item>\n</root>`;
+        content = `<?xml version="1.0" encoding="utf-8"?>\n<vector xmlns:android="http://schemas.android.com/apk/res/android"\n  android:width="48dp"\n  android:height="48dp"\n  android:viewportWidth="24"\n  android:viewportHeight="24">\n  <path android:fillColor="#4F46E5" android:pathData="M12,2L2,22h20L12,2z"/>\n</vector>`;
       }
     }
 
@@ -64,37 +65,55 @@ export const NewFileDialog: React.FC<NewFileDialogProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
       <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.96 }}
+        initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 40, scale: 0.96 }}
+        exit={{ opacity: 0, y: 30, scale: 0.96 }}
         transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-        className="w-full sm:max-w-lg bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+        className={`w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto border transition-colors ${
+          isDark
+            ? 'bg-slate-900 border-slate-800 text-slate-100'
+            : 'bg-white border-slate-200 text-slate-900'
+        }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div
+          className={`flex items-center justify-between pb-3.5 border-b ${
+            isDark ? 'border-slate-800' : 'border-slate-100'
+          }`}
+        >
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-500">
               <FileCode className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-white">新建代码文件</h3>
-              <p className="text-xs text-slate-400">支持自定义任意后缀名与初始模板</p>
+              <h3 className="text-base font-bold">新建代码文件</h3>
+              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                支持任意自定义后缀名与初始预设
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-800/80 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+              isDark
+                ? 'bg-slate-800 text-slate-400 hover:text-white'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-950'
+            }`}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           {/* File Name & Extension Input */}
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
+            <label
+              className={`block text-xs font-semibold mb-1.5 ${
+                isDark ? 'text-slate-300' : 'text-slate-700'
+              }`}
+            >
               文件名与自定义后缀名
             </label>
             <div className="flex items-center gap-2">
@@ -103,19 +122,29 @@ export const NewFileDialog: React.FC<NewFileDialogProps> = ({
                   type="text"
                   value={fileName}
                   onChange={(e) => setFileName(e.target.value)}
-                  placeholder="例如: cyber_icon 或 activity_main"
-                  className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
+                  placeholder="例如: brand_icon 或 home_view"
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 border transition-all ${
+                    isDark
+                      ? 'bg-slate-950/80 border-slate-700/80 text-white placeholder-slate-500'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                  }`}
                   autoFocus
                 />
               </div>
               <div className="w-28 relative">
-                <span className="absolute left-2.5 top-2.5 text-slate-400 text-sm font-mono pointer-events-none">.</span>
+                <span className="absolute left-2.5 top-2.5 text-slate-400 text-sm font-mono pointer-events-none">
+                  .
+                </span>
                 <input
                   type="text"
                   value={extension}
                   onChange={(e) => setExtension(e.target.value.replace(/^\./, ''))}
                   placeholder="后缀"
-                  className="w-full pl-6 pr-2.5 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm text-indigo-300 font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  className={`w-full pl-6 pr-2.5 py-2.5 rounded-xl text-sm font-mono font-bold focus:outline-none focus:ring-1 focus:ring-indigo-500 border transition-all ${
+                    isDark
+                      ? 'bg-slate-950/80 border-slate-700/80 text-indigo-300'
+                      : 'bg-slate-50 border-slate-200 text-indigo-700'
+                  }`}
                 />
               </div>
             </div>
@@ -123,7 +152,9 @@ export const NewFileDialog: React.FC<NewFileDialogProps> = ({
 
           {/* Quick Extension Selector */}
           <div>
-            <div className="text-xs text-slate-400 mb-2">常用后缀快捷选择：</div>
+            <div className={`text-xs mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              常用格式快捷标签：
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {COMMON_EXTENSIONS.map((item) => {
                 const isSelected = extension.toLowerCase() === item.ext;
@@ -134,12 +165,16 @@ export const NewFileDialog: React.FC<NewFileDialogProps> = ({
                     onClick={() => setExtension(item.ext)}
                     className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-mono transition-all text-left cursor-pointer border ${
                       isSelected
-                        ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 shadow-sm'
-                        : 'bg-slate-800/40 border-slate-800 text-slate-300 hover:bg-slate-800'
+                        ? isDark
+                          ? 'bg-indigo-600/25 border-indigo-500 text-indigo-300 font-bold'
+                          : 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold'
+                        : isDark
+                        ? 'bg-slate-800/40 border-slate-800 text-slate-300 hover:bg-slate-800'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     <span className="font-semibold">{item.label}</span>
-                    <span className="text-[10px] text-slate-500 font-sans">{item.desc}</span>
+                    <span className="text-[10px] opacity-70 font-sans">{item.desc}</span>
                   </button>
                 );
               })}
@@ -148,26 +183,30 @@ export const NewFileDialog: React.FC<NewFileDialogProps> = ({
 
           {/* Template Selection */}
           <div>
-            <div className="text-xs text-slate-400 mb-2 flex items-center justify-between">
-              <span>初始内容预设：</span>
-              <span className="text-[11px] text-indigo-400 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> 可选模板快速体验
+            <div className="text-xs mb-2 flex items-center justify-between">
+              <span className={isDark ? 'text-slate-400' : 'text-slate-600'}>初始代码预设：</span>
+              <span className="text-xs text-indigo-500 font-medium flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5" /> 可选模板体验
               </span>
             </div>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 smooth-scroll">
               <div
                 onClick={() => setSelectedTemplate('blank')}
                 className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                   selectedTemplate === 'blank'
-                    ? 'bg-indigo-600/15 border-indigo-500/80 text-white'
-                    : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                    ? isDark
+                      ? 'bg-indigo-600/20 border-indigo-500 text-white'
+                      : 'bg-indigo-50 border-indigo-300 text-indigo-900'
+                    : isDark
+                    ? 'bg-slate-950/40 border-slate-800 text-slate-400 hover:bg-slate-800/50'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <Plus className="w-4 h-4 text-slate-400" />
-                  <span className="text-xs font-medium">空白文件 (由我自己输入或粘贴)</span>
+                  <span className="text-xs font-semibold">空白文件 (自定代码)</span>
                 </div>
-                {selectedTemplate === 'blank' && <Check className="w-4 h-4 text-indigo-400" />}
+                {selectedTemplate === 'blank' && <Check className="w-4 h-4 text-indigo-500" />}
               </div>
 
               {INITIAL_FILES.map((tmpl) => (
@@ -180,34 +219,46 @@ export const NewFileDialog: React.FC<NewFileDialogProps> = ({
                   }}
                   className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                     selectedTemplate === tmpl.id
-                      ? 'bg-indigo-600/15 border-indigo-500/80 text-white'
-                      : 'bg-slate-950/50 border-slate-800 text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                      ? isDark
+                        ? 'bg-indigo-600/20 border-indigo-500 text-white'
+                        : 'bg-indigo-50 border-indigo-300 text-indigo-900'
+                      : isDark
+                      ? 'bg-slate-950/40 border-slate-800 text-slate-400 hover:bg-slate-800/50'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono uppercase">
+                    <span
+                      className={`text-xs px-1.5 py-0.5 rounded font-mono font-bold uppercase ${
+                        isDark ? 'bg-slate-800 text-indigo-300' : 'bg-slate-200 text-indigo-700'
+                      }`}
+                    >
                       .{tmpl.extension}
                     </span>
-                    <span className="text-xs truncate">{tmpl.name}</span>
+                    <span className="text-xs truncate font-medium">{tmpl.name}</span>
                   </div>
-                  {selectedTemplate === tmpl.id && <Check className="w-4 h-4 text-indigo-400 shrink-0" />}
+                  {selectedTemplate === tmpl.id && <Check className="w-4 h-4 text-indigo-500 shrink-0" />}
                 </div>
               ))}
             </div>
           </div>
 
           {/* Action buttons */}
-          <div className="pt-3 flex gap-2.5">
+          <div className="pt-2 flex gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-medium transition-colors cursor-pointer"
+              className={`flex-1 py-2.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                isDark
+                  ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
+                  : 'border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
             >
               取消
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 text-xs font-medium shadow-lg shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white hover:from-indigo-500 hover:to-indigo-600 text-xs font-semibold shadow-md shadow-indigo-600/25 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
               <Check className="w-4 h-4" />
               创建并打开

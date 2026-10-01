@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   Copy,
   Check,
@@ -11,18 +11,22 @@ import {
 } from 'lucide-react';
 import { CodeFile } from '../types';
 import { formatBytes, formatCode } from '../utils/codeDetect';
+import { useTheme } from '../context/ThemeContext';
 
 interface CodeEditorProps {
   file: CodeFile;
   onChangeContent: (newContent: string) => void;
   onOpenSmartPaste: () => void;
+  onImportFiles?: (files: FileList) => void;
 }
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({
   file,
   onChangeContent,
   onOpenSmartPaste,
+  onImportFiles,
 }) => {
+  const { isDark } = useTheme();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,16 +39,25 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const lineCount = lines.length;
   const byteSize = new Blob([file.content]).size;
 
-  // Sync scroll of line numbers and textarea
+  // Reset history on active file change
+  useEffect(() => {
+    setHistory([file.content]);
+    setHistoryIndex(0);
+  }, [file.id]);
+
+  // High-performance RAF scroll sync between textarea and line numbers
+  const rafId = useRef<number | null>(null);
   const handleScroll = () => {
-    if (textareaRef.current && lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
-    }
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    rafId.current = requestAnimationFrame(() => {
+      if (textareaRef.current && lineNumbersRef.current) {
+        lineNumbersRef.current.scrollTop = textareaRef.current.scrollTop;
+      }
+    });
   };
 
   const updateContentWithHistory = (newVal: string) => {
     onChangeContent(newVal);
-    // Keep max 30 history states
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(newVal);
     if (newHistory.length > 30) newHistory.shift();
@@ -52,7 +65,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     setHistoryIndex(newHistory.length - 1);
   };
 
-  // Handle Tab and Indent keys
+  // Tab key indent handling
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -67,9 +80,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         file.content.substring(0, start) + spaces + file.content.substring(end);
       updateContentWithHistory(updated);
 
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         textarea.selectionStart = textarea.selectionEnd = start + spaces.length;
-      }, 0);
+      });
     }
   };
 
@@ -79,7 +92,6 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback
       const textarea = textareaRef.current;
       if (textarea) {
         textarea.select();
@@ -98,111 +110,150 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   };
 
   const handleClear = () => {
-    if (confirm('确定要清空当前代码内容吗？')) {
+    if (file.content && confirm('确定要清空当前代码内容吗？')) {
       updateContentWithHistory('');
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFile = e.target.files?.[0];
-    if (!uploadedFile) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      if (typeof text === 'string') {
-        updateContentWithHistory(text);
-      }
-    };
-    reader.readAsText(uploadedFile);
-    // Reset file input
-    e.target.value = '';
-  };
-
   const handleUndo = () => {
     if (historyIndex > 0) {
-      const newIdx = historyIndex - 1;
-      setHistoryIndex(newIdx);
-      onChangeContent(history[newIdx]);
+      const nextIndex = historyIndex - 1;
+      setHistoryIndex(nextIndex);
+      onChangeContent(history[nextIndex]);
+    }
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      if (onImportFiles) {
+        onImportFiles(e.target.files);
+      } else {
+        const selected = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const text = event.target?.result as string;
+          if (text !== undefined) {
+            updateContentWithHistory(text);
+          }
+        };
+        reader.readAsText(selected);
+      }
+      e.target.value = '';
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950/70 border border-slate-800/80 rounded-2xl overflow-hidden shadow-inner backdrop-blur-sm">
-      {/* Editor Action Toolbar */}
-      <div className="px-3 py-2 bg-slate-900/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
-        {/* Left indicators */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-800/80 text-indigo-300 font-mono text-[11px]">
-            <FileCode2 className="w-3.5 h-3.5" />
-            <span>
-              {file.name}.{file.extension}
-            </span>
-          </div>
-          <span className="hidden sm:inline text-slate-500 font-mono text-[11px]">
-            {lineCount} 行 · {formatBytes(byteSize)}
+    <div
+      className={`w-full h-full rounded-2xl sm:rounded-3xl border flex flex-col overflow-hidden shadow-sm transition-colors duration-200 ${
+        isDark
+          ? 'bg-slate-900/90 border-slate-800'
+          : 'bg-white border-slate-200'
+      }`}
+    >
+      {/* Editor Sub-Header Toolbar */}
+      <div
+        className={`px-3 py-2 border-b flex flex-wrap items-center justify-between gap-2 select-none shrink-0 ${
+          isDark
+            ? 'bg-slate-900 border-slate-800/80 text-slate-300'
+            : 'bg-slate-50 border-slate-200/90 text-slate-700'
+        }`}
+      >
+        {/* Left: File metadata */}
+        <div className="flex items-center gap-2 text-xs font-mono">
+          <FileCode2 className="w-4 h-4 text-indigo-500" />
+          <span className="font-semibold">{lineCount} 行</span>
+          <span className="text-slate-400">·</span>
+          <span>{formatBytes(byteSize)}</span>
+          <span className="text-slate-400 hidden sm:inline">·</span>
+          <span className="hidden sm:inline uppercase text-indigo-500 font-bold">
+            {file.extension}
           </span>
         </div>
 
-        {/* Right tools */}
+        {/* Right: Quick actions toolbar */}
         <div className="flex items-center gap-1">
+          {/* Smart Paste AI Code */}
           <button
             type="button"
             onClick={onOpenSmartPaste}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-600/25 hover:bg-indigo-600/35 text-indigo-300 font-medium active:scale-95 transition-all cursor-pointer border border-indigo-500/30"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium active:scale-95 transition-all cursor-pointer ${
+              isDark
+                ? 'bg-indigo-600/25 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30'
+                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+            }`}
             title="一键粘贴 AI 代码并智能识别"
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>粘贴 AI 代码</span>
+            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+            <span className="hidden xs:inline">粘贴 AI 代码</span>
           </button>
 
+          {/* Format Code */}
           <button
             type="button"
             onClick={handleFormat}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 active:scale-95 transition-all cursor-pointer"
-            title="一键美化排版 / 格式化"
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium active:scale-95 transition-all cursor-pointer ${
+              isDark
+                ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200'
+            }`}
+            title="一键格式化排版代码"
           >
             <AlignLeft className="w-3.5 h-3.5" />
             <span className="hidden md:inline">格式化</span>
           </button>
 
+          {/* Undo */}
           <button
             type="button"
             disabled={historyIndex <= 0}
             onClick={handleUndo}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 active:scale-95 transition-all cursor-pointer"
-            title="撤销"
+            className={`p-1.5 rounded-xl transition-all cursor-pointer active:scale-95 disabled:opacity-30 ${
+              isDark
+                ? 'text-slate-400 hover:text-white hover:bg-slate-800'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+            }`}
+            title="撤销 (Undo)"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-4 h-4" />
           </button>
 
+          {/* Open Local File */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 active:scale-95 transition-all cursor-pointer"
-            title="从本地打开文件"
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium active:scale-95 transition-all cursor-pointer ${
+              isDark
+                ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200'
+            }`}
+            title="从本地打开替换当前代码"
           >
             <Upload className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">打开</span>
+            <span className="hidden md:inline">导入</span>
           </button>
           <input
             ref={fileInputRef}
             type="file"
             accept=".svg,.html,.htm,.xml,.md,.json,.css,.txt"
-            onChange={handleFileUpload}
+            onChange={handleFileInput}
             className="hidden"
           />
 
+          {/* Copy Button */}
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 transition-all cursor-pointer"
-            title="复制全部代码"
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium active:scale-95 transition-all cursor-pointer ${
+              isDark
+                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+                : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+            }`}
+            title="复制代码"
           >
             {copied ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400 font-medium">已复制</span>
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="text-emerald-500 font-semibold">已复制</span>
               </>
             ) : (
               <>
@@ -212,25 +263,30 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             )}
           </button>
 
+          {/* Clear */}
           <button
             type="button"
             onClick={handleClear}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 active:scale-95 transition-all cursor-pointer"
-            title="清空内容"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 active:scale-95 transition-all cursor-pointer"
+            title="清空代码"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* Editor Canvas Area */}
       <div className="flex-1 relative flex overflow-hidden">
-        {/* Line Numbers */}
+        {/* Line Numbers Sidebar */}
         <div
           ref={lineNumbersRef}
           aria-hidden="true"
-          className="select-none py-3 px-2.5 bg-slate-950 text-slate-600 font-mono text-xs text-right border-r border-slate-800/80 overflow-hidden shrink-0 min-w-[3rem]"
-          style={{ lineHeight: '1.6rem' }}
+          className={`select-none py-3 px-2 font-mono text-xs text-right overflow-hidden shrink-0 min-w-[2.8rem] sm:min-w-[3.2rem] border-r transition-colors ${
+            isDark
+              ? 'bg-slate-950/80 text-slate-600 border-slate-800/80'
+              : 'bg-slate-50 text-slate-400 border-slate-200'
+          }`}
+          style={{ lineHeight: '1.65rem' }}
         >
           {Array.from({ length: Math.max(lineCount, 1) }).map((_, idx) => (
             <div key={idx} className="tabular-nums">
@@ -247,34 +303,16 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             onChange={(e) => updateContentWithHistory(e.target.value)}
             onKeyDown={handleKeyDown}
             onScroll={handleScroll}
-            placeholder="在此处输入或粘贴代码（如 SVG 标签、HTML 页面或 XML 布局）..."
+            placeholder="在此处输入或粘贴代码（如 SVG 标签、HTML 网页或 XML 布局代码）..."
             spellCheck={false}
             autoCapitalize="off"
-            autoComplete="off"
             autoCorrect="off"
-            className="w-full h-full py-3 px-3.5 bg-transparent text-slate-100 font-mono text-xs md:text-sm resize-none focus:outline-none leading-[1.6rem] whitespace-pre tab-4 overflow-auto selection:bg-indigo-600/40"
+            className={`w-full h-full p-3 font-mono text-sm leading-[1.65rem] border-none resize-none focus:outline-none overflow-auto tab-4 smooth-scroll ${
+              isDark
+                ? 'bg-slate-950 text-slate-100 placeholder-slate-600'
+                : 'bg-white text-slate-900 placeholder-slate-400'
+            }`}
           />
-
-          {file.content.trim() === '' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center pointer-events-none">
-              <p className="text-slate-500 text-xs mb-3">代码文件为空</p>
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 max-w-xs text-[11px] text-slate-400 space-y-1">
-                <p>💡 点击右上角「粘贴 AI 代码」一键导入</p>
-                <p>💡 或直接在键盘上按 Ctrl+V 粘贴</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Bottom status bar */}
-      <div className="px-3 py-1.5 bg-slate-950 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-        <div className="flex items-center gap-3">
-          <span>UTF-8</span>
-          <span>{file.extension.toUpperCase()} 模式</span>
-        </div>
-        <div>
-          <span>{file.content.length} 字符</span>
         </div>
       </div>
     </div>

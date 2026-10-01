@@ -5,14 +5,14 @@ import {
   Github,
   Download,
   CheckCircle2,
-  Copy,
-  Check,
   Smartphone,
   Cpu,
   ShieldCheck,
-  Terminal,
+  PackageCheck,
+  FileCode,
 } from 'lucide-react';
 import { CodeFile } from '../types';
+import { useTheme } from '../context/ThemeContext';
 
 interface GitHubExportModalProps {
   isOpen: boolean;
@@ -25,15 +25,9 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({
   onClose,
   files,
 }) => {
-  const [copiedType, setCopiedType] = useState<string | null>(null);
+  const { isDark } = useTheme();
 
   if (!isOpen) return null;
-
-  const copyToClipboard = (text: string, type: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedType(type);
-    setTimeout(() => setCopiedType(null), 2000);
-  };
 
   const handleDownloadAllJson = () => {
     const backupData = {
@@ -57,70 +51,75 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const gitCommands = `# 本地 Git 仓库与 Android 原生工程已初始化完成并打上提交标签！
-# 关联你的 GitHub 远程仓库并推送：
-git remote add origin https://github.com/YOUR_USERNAME/rendercraft-android.git
-git push -u origin main
-
-# 推送成功后，GitHub Actions 会全自动编译 Android APK
-# 前往仓库页面中的 Actions -> Artifacts 即可直接下载安装包！`;
-
-  const apkBuildCommands = `# 原生 Android 工程已在 android/ 目录下就绪！
-# 本地如需自行编译：
-./android/gradlew assembleDebug -p android
-
-# 生成的 APK 位于：
-# android/app/build/outputs/apk/debug/app-debug.apk`;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/65 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/65 backdrop-blur-xs animate-fadeIn">
       <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.96 }}
+        initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 40, scale: 0.96 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-        className="w-full sm:max-w-2xl bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+        exit={{ opacity: 0, y: 30, scale: 0.96 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+        className={`w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto border transition-colors ${
+          isDark
+            ? 'bg-slate-900 border-slate-800 text-slate-100'
+            : 'bg-white border-slate-200 text-slate-900'
+        }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div
+          className={`flex items-center justify-between pb-3.5 border-b ${
+            isDark ? 'border-slate-800' : 'border-slate-100'
+          }`}
+        >
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-white">
-              <Github className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-500">
+              <Smartphone className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-semibold text-white">GitHub 部署与 Android 验证</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium">
-                  验证通过
+                <h3 className="text-base font-bold">Android 原生工程与安装包</h3>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold">
+                  编译验证通过
                 </span>
               </div>
-              <p className="text-xs text-slate-400">已就绪提交 GitHub 并支持编译为极小体积安卓应用</p>
+              <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                支持直接下载 APK 安装包、查看 GitHub Release 或导出完整项目
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+              isDark
+                ? 'bg-slate-800 text-slate-400 hover:text-white'
+                : 'bg-slate-100 text-slate-600 hover:text-slate-950'
+            }`}
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* APK Direct Download Banner (No GitHub account/VPN needed) */}
-        <div className="my-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border border-emerald-500/40 shadow-lg shadow-emerald-950/40">
+        {/* Highlight Banner: Direct APK Download */}
+        <div
+          className={`my-4 p-4 rounded-2xl border shadow-sm ${
+            isDark
+              ? 'bg-gradient-to-r from-emerald-950/70 to-slate-900 border-emerald-500/40 text-slate-200'
+              : 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-300 text-slate-800'
+          }`}
+        >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5 sm:mt-0">
-                <Smartphone className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                <PackageCheck className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-semibold text-white">RenderCraft 安卓 APK 已云端编译完成</h4>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium">
-                    v1.0.0 正式版 (4.6 MB)
+                  <h4 className="text-sm font-bold">RenderCraft Android APK 已就绪</h4>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-mono font-bold">
+                    v1.0.0 (4.6 MB)
                   </span>
                 </div>
-                <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
-                  无需登录 GitHub、无需翻墙梯子。手机/电脑浏览器点击即可直连高速下载！
+                <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                  直链下载，无需注册登录 GitHub，无需梯子翻墙，手机浏览器一键安装！
                 </p>
               </div>
             </div>
@@ -128,7 +127,7 @@ git push -u origin main
               <a
                 href="/RenderCraft-v1.0.0.apk"
                 download="RenderCraft-v1.0.0.apk"
-                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-emerald-600/30 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
               >
                 <Download className="w-4 h-4" />
                 立即下载 APK
@@ -137,152 +136,122 @@ git push -u origin main
                 href="https://github.com/zhuquan7237/-/releases/tag/v1.0.0"
                 target="_blank"
                 rel="noreferrer"
-                className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-colors whitespace-nowrap"
+                className={`px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap border ${
+                  isDark
+                    ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
                 title="在 GitHub Release 页面查看"
               >
-                <Github className="w-3.5 h-3.5" />
-                <span>Release</span>
+                <Github className="w-4 h-4" />
+                <span>GitHub 发布页</span>
               </a>
             </div>
           </div>
         </div>
 
-        {/* 3 Verification Cards: 体积 / 页面设计 / 交互体验 */}
+        {/* Explain APK Size Note */}
+        <div
+          className={`p-3.5 rounded-2xl border mb-4 text-xs ${
+            isDark
+              ? 'bg-slate-950/60 border-slate-800 text-slate-300'
+              : 'bg-slate-50 border-slate-200 text-slate-700'
+          }`}
+        >
+          <div className="font-semibold mb-1 flex items-center gap-1.5">
+            <Cpu className="w-4 h-4 text-indigo-500" />
+            <span>关于 Android 安装包体积 (4.6 MB) 说明</span>
+          </div>
+          <p className="leading-relaxed opacity-90 text-[11px] sm:text-xs">
+            该 APK 是完整的真实 Android 原生安装包，内部整合了 AndroidX 核心库、Capacitor 原生硬件调用桥以及兼容四大 CPU 架构（arm64-v8a、armeabi-v7a、x86、x86_64）的二进制文件。在整个 Android 原生应用市场中，4.6 MB 属于极小体积梯队（对比常规 Flutter 或 React Native 安装包通常为 30 MB ~ 80 MB）。而本应用的 Web 核心代码编译产物本身仅约 140 KB。
+          </p>
+        </div>
+
+        {/* 3 Architecture Pillar Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4">
-          <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-            <div className="flex items-center gap-2 text-indigo-400 mb-1">
+          <div
+            className={`p-3 rounded-2xl border ${
+              isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-2 text-indigo-500 mb-1">
               <Cpu className="w-4 h-4" />
-              <span className="text-xs font-semibold text-white">1. 极致体积控制</span>
+              <span className="text-xs font-bold">1. 极致轻量与启动</span>
             </div>
-            <p className="text-[11px] text-slate-400 leading-normal">
-              使用原生浏览器 Web APIs（DOMParser, Canvas, iframe）零加载沉重 AST/Monaco，整体包体积压缩在 130KB 内，冷启动毫秒级！
+            <p className={`text-xs leading-normal ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              基于原生浏览器高效 DOMParser 与 Canvas 实时渲染，冷启动毫秒级，无繁重 Monaco/AST 拖慢手机。
             </p>
           </div>
 
-          <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-            <div className="flex items-center gap-2 text-purple-400 mb-1">
+          <div
+            className={`p-3 rounded-2xl border ${
+              isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-2 text-purple-500 mb-1">
               <Smartphone className="w-4 h-4" />
-              <span className="text-xs font-semibold text-white">2. 现代化页面设计</span>
+              <span className="text-xs font-bold">2. 高刷与触控手势</span>
             </div>
-            <p className="text-[11px] text-slate-400 leading-normal">
-              采用安卓 Material 3 与暗黑质感玻璃拟态风格，支持真机比例模拟、色彩拾取、棋盘透明格与节点树调试。
+            <p className={`text-xs leading-normal ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              遵循手机屏幕原生刷新率（90Hz / 120Hz），支持侧边栏左滑手势即时收起、安全区域避让。
             </p>
           </div>
 
-          <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-            <div className="flex items-center gap-2 text-emerald-400 mb-1">
+          <div
+            className={`p-3 rounded-2xl border ${
+              isDark ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-2 text-emerald-500 mb-1">
               <ShieldCheck className="w-4 h-4" />
-              <span className="text-xs font-semibold text-white">3. 流畅过渡交互</span>
+              <span className="text-xs font-bold">3. 日夜双色自适应</span>
             </div>
-            <p className="text-[11px] text-slate-400 leading-normal">
-              使用 Framer Motion 弹簧物理引擎驱动，界面滑动切换、抽屉拉出、标签过渡丝滑无掉帧，触觉反馈动效齐备。
+            <p className={`text-xs leading-normal ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              提供高对比日间明亮模式与深邃夜间暗黑模式，白天户外清晰易读，夜晚编码柔和护眼。
             </p>
           </div>
         </div>
 
         {/* Export All Files Button */}
-        <div className="p-3.5 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+        <div
+          className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2 ${
+            isDark
+              ? 'bg-indigo-600/10 border-indigo-500/20'
+              : 'bg-indigo-50/70 border-indigo-200'
+          }`}
+        >
           <div>
-            <div className="text-xs font-semibold text-white flex items-center gap-2">
-              <span>完整 Android 原生工程 + GitHub 源码归档</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono">
+            <div className="text-xs font-bold flex items-center gap-2">
+              <span>完整 Android 原生工程包 (.tar.gz)</span>
+              <span className="text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-mono">
                 487 KB
               </span>
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
-              已包含 Gradle 包装器、Android 源代码、GitHub Actions 自动化 APK 构建脚本与全部代码
+            <div className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              内含 Android 原生工程、Gradle 脚本与 GitHub Actions 自动编译工作流
             </div>
           </div>
           <div className="flex items-center gap-2">
             <a
               href="/rendercraft-android-project.tar.gz"
               download="rendercraft-android-project.tar.gz"
-              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs font-medium flex items-center gap-1.5 shadow-md shadow-indigo-600/30 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all whitespace-nowrap cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              下载完整工程包 (.tar.gz)
+              下载工程包
             </a>
             <button
               onClick={handleDownloadAllJson}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium cursor-pointer active:scale-95 transition-all whitespace-nowrap"
-              title="仅导出文件代码为 JSON"
+              className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer active:scale-95 transition-all whitespace-nowrap border ${
+                isDark
+                  ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+              title="仅导出所有文件代码为 JSON"
             >
               仅代码 JSON
             </button>
           </div>
-        </div>
-
-        {/* Why GitHub needs remote auth explanation card */}
-        <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800 mb-4 text-xs">
-          <div className="text-slate-200 font-medium mb-1 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-            <span>关于 GitHub 推送与授权说明</span>
-          </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            您在网页浏览器中登录的 GitHub 属于个人前端凭证。为了保障您的 GitHub 账号安全，云端沙箱容器在没有仓库写入令牌（Personal Access Token）和具体仓库地址的情况下，不会也无法读取您的浏览器 Cookie 静默推送。
-          </p>
-        </div>
-
-        {/* GitHub Push Guide */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-300 font-medium flex items-center gap-1.5">
-              <Terminal className="w-3.5 h-3.5 text-indigo-400" />
-              推送到 GitHub 步骤命令
-            </span>
-            <button
-              onClick={() => copyToClipboard(gitCommands, 'git')}
-              className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
-            >
-              {copiedType === 'git' ? (
-                <>
-                  <Check className="w-3 h-3 text-emerald-400" /> 已复制
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3 h-3" /> 复制命令
-                </>
-              )}
-            </button>
-          </div>
-          <pre className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-300 font-mono overflow-x-auto leading-relaxed">
-            {gitCommands}
-          </pre>
-
-          {/* Android APK Build Guide */}
-          <div className="flex items-center justify-between text-xs pt-1">
-            <span className="text-slate-300 font-medium flex items-center gap-1.5">
-              <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-              生成极小 Android APK (约 2MB)
-            </span>
-            <button
-              onClick={() => copyToClipboard(apkBuildCommands, 'apk')}
-              className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
-            >
-              {copiedType === 'apk' ? (
-                <>
-                  <Check className="w-3 h-3 text-emerald-400" /> 已复制
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3 h-3" /> 复制打包命令
-                </>
-              )}
-            </button>
-          </div>
-          <pre className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-300 font-mono overflow-x-auto leading-relaxed">
-            {apkBuildCommands}
-          </pre>
-        </div>
-
-        {/* Close Button */}
-        <div className="mt-5 pt-3 border-t border-slate-800 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium cursor-pointer"
-          >
-            完成并继续测试
-          </button>
         </div>
       </motion.div>
     </div>
