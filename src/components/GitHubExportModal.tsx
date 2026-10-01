@@ -105,6 +105,48 @@ git push -u origin main
           </button>
         </div>
 
+        {/* APK Direct Download Banner (No GitHub account/VPN needed) */}
+        <div className="my-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border border-emerald-500/40 shadow-lg shadow-emerald-950/40">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5 sm:mt-0">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-semibold text-white">RenderCraft 安卓 APK 已云端编译完成</h4>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium">
+                    v1.0.0 正式版 (4.6 MB)
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">
+                  无需登录 GitHub、无需翻墙梯子。手机/电脑浏览器点击即可直连高速下载！
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <a
+                href="/RenderCraft-v1.0.0.apk"
+                download="RenderCraft-v1.0.0.apk"
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              >
+                <Download className="w-4 h-4" />
+                立即下载 APK
+              </a>
+              <a
+                href="https://github.com/zhuquan7237/-/releases/tag/v1.0.0"
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-colors whitespace-nowrap"
+                title="在 GitHub Release 页面查看"
+              >
+                <Github className="w-3.5 h-3.5" />
+                <span>Release</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
         {/* 3 Verification Cards: 体积 / 页面设计 / 交互体验 */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4">
           <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800">

@@ -6,6 +6,7 @@ import {
   Monitor,
   Github,
   Plus,
+  Download,
 } from 'lucide-react';
 import { CodeFile } from '../types';
 
@@ -59,6 +60,17 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
 
       {/* Zone 2 & 3: Primary Quick Actions */}
       <div className="flex items-center gap-1.5 shrink-0">
+        {/* Direct APK Download Button */}
+        <a
+          href="/RenderCraft-v1.0.0.apk"
+          download="RenderCraft-v1.0.0.apk"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer whitespace-nowrap animate-pulse"
+          title="直接下载打包好的 Android APK 安装包 (4.6 MB)"
+        >
+          <Download className="w-3.5 h-3.5" />
+          <span>下载 APK</span>
+        </a>
+
         {/* Smart AI Paste Button */}
         <button
           onClick={onOpenSmartPaste}
