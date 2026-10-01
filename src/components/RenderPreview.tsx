@@ -2,32 +2,32 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ZoomIn,
   ZoomOut,
-  Maximize2,
   RefreshCw,
   Download,
   AlertCircle,
   Smartphone,
   Tablet,
   Monitor,
-  Check,
   Palette,
   Terminal,
   Layers,
   ChevronRight,
   ChevronDown,
   Eye,
-  FileCode,
+  ClipboardPaste,
+  FileCode2,
 } from 'lucide-react';
 import { CodeFile, ViewportMode, RenderError } from '../types';
 import { convertAndroidVectorToSvg } from '../utils/androidXmlToSvg';
+import { cleanPastedCode } from '../utils/codeDetect';
 import { useTheme } from '../context/ThemeContext';
 
 interface RenderPreviewProps {
   file: CodeFile;
-  onOpenFullscreen?: () => void;
+  onOpenSmartPaste?: () => void;
 }
 
-export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
+export const RenderPreview: React.FC<RenderPreviewProps> = ({ file, onOpenSmartPaste }) => {
   const { isDark } = useTheme();
   const [zoom, setZoom] = useState(1);
   const [bgMode, setBgMode] = useState<'transparent' | 'dark' | 'white' | 'blueprint'>('transparent');
@@ -41,27 +41,42 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
 
+  // Clean code and detect type robustly
+  const rawContent = file.content || '';
+  const cleanedContent = useMemo(() => cleanPastedCode(rawContent), [rawContent]);
+  const isEmpty = cleanedContent.trim().length === 0;
+
   const lowerExt = file.extension.toLowerCase();
-  const isSvg = lowerExt === 'svg' || file.content.trim().startsWith('<svg');
-  const isHtml = lowerExt === 'html' || lowerExt === 'htm';
-  const isXml = lowerExt === 'xml';
+  const hasSvgTag = /<svg[\s\S]*?>/i.test(cleanedContent);
+  const isSvg = lowerExt === 'svg' || hasSvgTag;
+  const isAndroidVector = /<vector[\s\S]*?android:pathData/i.test(cleanedContent) || /xmlns:android="http:\/\/schemas.android.com\/apk\/res\/android"/i.test(cleanedContent);
+  const isXml = lowerExt === 'xml' || isAndroidVector;
+  const isHtml = (lowerExt === 'html' || lowerExt === 'htm' || /<!doctype\s+html|<html[\s\S]*?>/i.test(cleanedContent)) && !hasSvgTag;
   const isMd = lowerExt === 'md';
 
-  // Check if XML is Android VectorDrawable
+  // Android Vector conversion
   const androidSvgConversion = useMemo(() => {
-    if (isXml) {
-      return convertAndroidVectorToSvg(file.content);
+    if (isXml || isAndroidVector) {
+      return convertAndroidVectorToSvg(cleanedContent);
     }
     return null;
-  }, [file.content, isXml]);
+  }, [cleanedContent, isXml, isAndroidVector]);
 
-  // Error validation for SVG and XML
+  // Extract clean SVG HTML
+  const svgRenderHtml = useMemo(() => {
+    if (!isSvg) return '';
+    const match = cleanedContent.match(/<svg[\s\S]*?<\/svg>/i);
+    if (match) return match[0];
+    return cleanedContent.replace(/^<\?xml[^>]*\?>/i, '').trim();
+  }, [cleanedContent, isSvg]);
+
+  // Error validation
   const parseValidation = useMemo((): { error: RenderError | null; doc: Document | null } => {
-    if (isSvg || isXml) {
+    if ((isSvg || isXml) && !isEmpty) {
       try {
         const parser = new DOMParser();
         const mime = isSvg ? 'image/svg+xml' : 'text/xml';
-        const doc = parser.parseFromString(file.content, mime);
+        const doc = parser.parseFromString(cleanedContent, mime);
         const parserError = doc.querySelector('parsererror');
         if (parserError) {
           return {
@@ -75,18 +90,18 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
       }
     }
     return { error: null, doc: null };
-  }, [file.content, isSvg, isXml]);
+  }, [cleanedContent, isSvg, isXml, isEmpty]);
 
-  // Extract unique colors from SVG
+  // Extract unique colors
   const extractedColors = useMemo(() => {
     if (!isSvg && !androidSvgConversion) return [];
-    const content = isSvg ? file.content : (androidSvgConversion || '');
+    const content = isSvg ? svgRenderHtml : (androidSvgConversion || '');
     const colorRegex = /#(?:[0-9a-fA-F]{3}){1,2}\b|rgba?\([^)]+\)/g;
     const matches = content.match(colorRegex) || [];
     return Array.from(new Set(matches)).slice(0, 10);
-  }, [file.content, isSvg, androidSvgConversion]);
+  }, [svgRenderHtml, isSvg, androidSvgConversion]);
 
-  // Handle iframe console intercept
+  // Iframe console message intercept
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data && event.data.source === 'rendercraft-console') {
@@ -97,9 +112,9 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // Prepare iframe HTML with console listener
+  // Prepare iframe HTML
   const iframeContent = useMemo(() => {
-    if (!isHtml) return '';
+    if (!isHtml || isEmpty) return '';
     const scriptInjection = `
       <script>
         (function() {
@@ -122,17 +137,17 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
       </script>
     `;
 
-    if (file.content.includes('<head>')) {
-      return file.content.replace('<head>', '<head>' + scriptInjection);
-    } else if (file.content.includes('<html>')) {
-      return file.content.replace('<html>', '<html><head>' + scriptInjection + '</head>');
+    if (cleanedContent.includes('<head>')) {
+      return cleanedContent.replace('<head>', '<head>' + scriptInjection);
+    } else if (cleanedContent.includes('<html>')) {
+      return cleanedContent.replace('<html>', '<html><head>' + scriptInjection + '</head>');
     }
-    return `<!DOCTYPE html><html><head>${scriptInjection}</head><body>${file.content}</body></html>`;
-  }, [file.content, isHtml]);
+    return `<!DOCTYPE html><html><head>${scriptInjection}</head><body>${cleanedContent}</body></html>`;
+  }, [cleanedContent, isHtml, isEmpty]);
 
   // Export SVG to PNG
   const handleExportPng = () => {
-    const content = isSvg ? file.content : (androidSvgConversion || '');
+    const content = isSvg ? svgRenderHtml : (androidSvgConversion || '');
     if (!content) return;
 
     try {
@@ -182,7 +197,7 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
 
   return (
     <div
-      className={`flex flex-col h-full rounded-2xl sm:rounded-3xl border overflow-hidden shadow-sm transition-colors duration-200 ${
+      className={`flex flex-col w-full h-full min-h-0 flex-1 rounded-2xl sm:rounded-3xl border overflow-hidden shadow-sm transition-colors duration-200 ${
         isDark
           ? 'bg-slate-900/90 border-slate-800'
           : 'bg-white border-slate-200'
@@ -241,7 +256,7 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
         {/* Format Specific Controls */}
         <div className="flex items-center gap-1.5">
           {/* Zoom controls for SVG */}
-          {(isSvg || (isXml && androidSvgConversion && xmlTab === 'visual')) && (
+          {(isSvg || (isXml && androidSvgConversion && xmlTab === 'visual')) && !isEmpty && (
             <div
               className={`flex items-center gap-1 px-1.5 py-0.5 rounded-xl border ${
                 isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-100 border-slate-200'
@@ -275,7 +290,7 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
           )}
 
           {/* Background switcher for vector */}
-          {(isSvg || (isXml && androidSvgConversion && xmlTab === 'visual')) && (
+          {(isSvg || (isXml && androidSvgConversion && xmlTab === 'visual')) && !isEmpty && (
             <div
               className={`flex items-center gap-1 p-0.5 rounded-xl border ${
                 isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-100 border-slate-200'
@@ -318,7 +333,7 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
           )}
 
           {/* Viewport switcher for HTML */}
-          {isHtml && (
+          {isHtml && !isEmpty && (
             <div
               className={`flex items-center gap-1 p-0.5 rounded-xl border ${
                 isDark ? 'bg-slate-800/80 border-slate-700' : 'bg-slate-100 border-slate-200'
@@ -333,7 +348,7 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
                     ? 'text-slate-400 hover:text-white'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
-                title="安卓手机视图 (390px)"
+                title="手机视图"
               >
                 <Smartphone className="w-3.5 h-3.5" />
               </button>
@@ -346,7 +361,7 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
                     ? 'text-slate-400 hover:text-white'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
-                title="平板视图 (768px)"
+                title="平板视图"
               >
                 <Tablet className="w-3.5 h-3.5" />
               </button>
@@ -359,7 +374,7 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
                     ? 'text-slate-400 hover:text-white'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
-                title="全屏桌面视图 (100%)"
+                title="桌面视图"
               >
                 <Monitor className="w-3.5 h-3.5" />
               </button>
@@ -367,7 +382,7 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
           )}
 
           {/* Refresh HTML */}
-          {isHtml && (
+          {isHtml && !isEmpty && (
             <button
               onClick={() => {
                 setRefreshKey((k) => k + 1);
@@ -382,33 +397,11 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
             </button>
           )}
 
-          {/* Console drawer toggle for HTML */}
-          {isHtml && (
-            <button
-              onClick={() => setShowConsole(!showConsole)}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium cursor-pointer transition-colors active:scale-95 ${
-                showConsole
-                  ? 'bg-indigo-600 text-white'
-                  : isDark
-                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              <Terminal className="w-3.5 h-3.5" />
-              <span>控制台</span>
-              {consoleLogs.length > 0 && (
-                <span className="w-4 h-4 rounded-full bg-indigo-500 text-white font-bold text-[9px] flex items-center justify-center">
-                  {consoleLogs.length}
-                </span>
-              )}
-            </button>
-          )}
-
           {/* Export PNG from SVG */}
-          {(isSvg || androidSvgConversion) && (
+          {(isSvg || androidSvgConversion) && !isEmpty && (
             <button
               onClick={handleExportPng}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-xs font-medium shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-xs font-semibold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
               title="导出高清 PNG 图片"
             >
               <Download className="w-3.5 h-3.5" />
@@ -430,11 +423,11 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
       </div>
 
       {/* Parse error warning if any */}
-      {parseValidation.error && (
-        <div className="p-3 bg-rose-500/10 border-b border-rose-500/20 text-rose-500 dark:text-rose-300 flex items-start gap-2.5 text-xs">
+      {parseValidation.error && !isEmpty && (
+        <div className="p-3 bg-rose-500/10 border-b border-rose-500/20 text-rose-500 dark:text-rose-300 flex items-start gap-2.5 text-xs shrink-0">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <span className="font-semibold">代码语法提示：</span>
+            <span className="font-semibold">代码格式提示：</span>
             <div className="font-mono text-xs opacity-90 mt-0.5 line-clamp-2">
               {parseValidation.error.message}
             </div>
@@ -442,91 +435,42 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
         </div>
       )}
 
-      {/* Main Preview Container */}
+      {/* Main Preview Workspace */}
       <div
-        className={`flex-1 relative flex flex-col items-center justify-center overflow-auto p-4 transition-colors smooth-scroll ${
+        className={`flex-1 min-h-0 w-full relative flex flex-col items-center justify-center overflow-auto p-3 sm:p-4 transition-colors smooth-scroll ${
           isDark ? 'bg-slate-950/60' : 'bg-slate-100/60'
         }`}
       >
-        {/* Render for SVG */}
-        {isSvg && (
-          <div
-            ref={svgContainerRef}
-            className={`w-full h-full flex items-center justify-center rounded-2xl p-4 transition-all duration-200 overflow-auto border ${
-              isDark ? 'border-slate-800/60' : 'border-slate-200/80 shadow-xs'
-            } ${
-              bgMode === 'transparent'
-                ? 'bg-transparent'
-                : bgMode === 'dark'
-                ? 'bg-slate-950'
-                : bgMode === 'white'
-                ? 'bg-white'
-                : 'bg-[#0a1628]'
-            }`}
-            style={
-              bgMode === 'transparent'
-                ? {
-                    backgroundImage: isDark
-                      ? 'repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%)'
-                      : 'repeating-conic-gradient(#e2e8f0 0% 25%, #ffffff 0% 50%)',
-                    backgroundSize: '20px 20px',
-                  }
-                : bgMode === 'blueprint'
-                ? {
-                    backgroundImage:
-                      'linear-gradient(to right, rgba(59, 130, 246, 0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(59, 130, 246, 0.15) 1px, transparent 1px)',
-                    backgroundSize: '24px 24px',
-                  }
-                : {}
-            }
-          >
-            <div
-              className="gpu-layer"
-              style={{
-                transform: `scale(${zoom})`,
-                transformOrigin: 'center center',
-                transition: 'transform 0.12s cubic-bezier(0.16, 1, 0.3, 1)',
-                maxWidth: '100%',
-                maxHeight: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              dangerouslySetInnerHTML={{ __html: file.content }}
-            />
+        {/* Empty Content State */}
+        {isEmpty ? (
+          <div className="flex flex-col items-center justify-center p-6 text-center max-w-sm">
+            <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500 mb-3">
+              <FileCode2 className="w-7 h-7" />
+            </div>
+            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-1">
+              当前文件代码为空
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+              您可以在代码编辑区输入代码，或直接一键粘贴来自 AI、设计稿的 SVG / HTML / XML
+            </p>
+            {onOpenSmartPaste && (
+              <button
+                onClick={onOpenSmartPaste}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-xs font-bold shadow-md shadow-indigo-600/30 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <ClipboardPaste className="w-4 h-4" />
+                <span>一键粘贴代码并渲染</span>
+              </button>
+            )}
           </div>
-        )}
-
-        {/* Render for HTML */}
-        {isHtml && (
-          <div
-            className={`h-full transition-all duration-200 flex items-center justify-center gpu-layer ${
-              viewportMode === 'mobile'
-                ? 'w-[390px] border-4 border-slate-700 rounded-3xl overflow-hidden shadow-2xl bg-black'
-                : viewportMode === 'tablet'
-                ? 'w-[768px] border-4 border-slate-700 rounded-2xl overflow-hidden shadow-2xl bg-black'
-                : 'w-full'
-            }`}
-          >
-            <iframe
-              key={refreshKey}
-              ref={iframeRef}
-              srcDoc={iframeContent}
-              title="HTML Live Render"
-              sandbox="allow-scripts allow-modals"
-              className="w-full h-full border-0 bg-white"
-            />
-          </div>
-        )}
-
-        {/* Render for XML */}
-        {isXml && (
-          <div className="w-full h-full flex flex-col">
-            {/* If Android Vector converted to SVG and visual tab active */}
-            {androidSvgConversion && xmlTab === 'visual' ? (
+        ) : (
+          <>
+            {/* Render for SVG */}
+            {isSvg && (
               <div
-                className={`w-full h-full flex flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200 overflow-auto border ${
-                  isDark ? 'border-slate-800' : 'border-slate-200 bg-white'
+                ref={svgContainerRef}
+                className={`w-full h-full min-h-0 flex-1 flex items-center justify-center rounded-2xl p-4 transition-all duration-200 overflow-auto border ${
+                  isDark ? 'border-slate-800/60' : 'border-slate-200/80 shadow-xs'
                 } ${
                   bgMode === 'transparent'
                     ? 'bg-transparent'
@@ -544,98 +488,171 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
                           : 'repeating-conic-gradient(#e2e8f0 0% 25%, #ffffff 0% 50%)',
                         backgroundSize: '20px 20px',
                       }
+                    : bgMode === 'blueprint'
+                    ? {
+                        backgroundImage:
+                          'linear-gradient(to right, rgba(59, 130, 246, 0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(59, 130, 246, 0.15) 1px, transparent 1px)',
+                        backgroundSize: '24px 24px',
+                      }
                     : {}
                 }
               >
-                <div
-                  className={`mb-3 px-3 py-1 rounded-full text-xs font-mono border flex items-center gap-1.5 ${
-                    isDark
-                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                      : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                  }`}
-                >
-                  <span>Android VectorDrawable → SVG 矢量渲染</span>
-                </div>
                 <div
                   className="gpu-layer"
                   style={{
                     transform: `scale(${zoom})`,
                     transformOrigin: 'center center',
                     transition: 'transform 0.12s cubic-bezier(0.16, 1, 0.3, 1)',
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
-                  dangerouslySetInnerHTML={{ __html: androidSvgConversion }}
+                  dangerouslySetInnerHTML={{ __html: svgRenderHtml }}
                 />
               </div>
-            ) : (
-              /* XML Tree Inspector */
+            )}
+
+            {/* Render for HTML */}
+            {isHtml && (
               <div
-                className={`w-full h-full p-4 overflow-auto rounded-2xl border font-mono text-xs leading-relaxed smooth-scroll ${
+                className={`h-full min-h-0 flex-1 transition-all duration-200 flex items-center justify-center gpu-layer ${
+                  viewportMode === 'mobile'
+                    ? 'w-[390px] border-4 border-slate-700 rounded-3xl overflow-hidden shadow-2xl bg-black'
+                    : viewportMode === 'tablet'
+                    ? 'w-[768px] border-4 border-slate-700 rounded-2xl overflow-hidden shadow-2xl bg-black'
+                    : 'w-full'
+                }`}
+              >
+                <iframe
+                  key={refreshKey}
+                  ref={iframeRef}
+                  srcDoc={iframeContent}
+                  title="HTML Live Render"
+                  sandbox="allow-scripts allow-modals"
+                  className="w-full h-full border-0 bg-white"
+                />
+              </div>
+            )}
+
+            {/* Render for XML */}
+            {isXml && !isSvg && (
+              <div className="w-full h-full min-h-0 flex-1 flex flex-col">
+                {androidSvgConversion && xmlTab === 'visual' ? (
+                  <div
+                    className={`w-full h-full min-h-0 flex-1 flex flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200 overflow-auto border ${
+                      isDark ? 'border-slate-800' : 'border-slate-200 bg-white'
+                    } ${
+                      bgMode === 'transparent'
+                        ? 'bg-transparent'
+                        : bgMode === 'dark'
+                        ? 'bg-slate-950'
+                        : bgMode === 'white'
+                        ? 'bg-white'
+                        : 'bg-[#0a1628]'
+                    }`}
+                    style={
+                      bgMode === 'transparent'
+                        ? {
+                            backgroundImage: isDark
+                              ? 'repeating-conic-gradient(#1e293b 0% 25%, #0f172a 0% 50%)'
+                              : 'repeating-conic-gradient(#e2e8f0 0% 25%, #ffffff 0% 50%)',
+                            backgroundSize: '20px 20px',
+                          }
+                        : {}
+                    }
+                  >
+                    <div
+                      className={`mb-3 px-3 py-1 rounded-full text-xs font-mono border flex items-center gap-1.5 ${
+                        isDark
+                          ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                          : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      }`}
+                    >
+                      <span>Android VectorDrawable → SVG 渲染</span>
+                    </div>
+                    <div
+                      className="gpu-layer"
+                      style={{
+                        transform: `scale(${zoom})`,
+                        transformOrigin: 'center center',
+                        transition: 'transform 0.12s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                      dangerouslySetInnerHTML={{ __html: androidSvgConversion }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className={`w-full h-full min-h-0 flex-1 p-4 overflow-auto rounded-2xl border font-mono text-xs leading-relaxed smooth-scroll ${
+                      isDark
+                        ? 'bg-slate-950 border-slate-800 text-slate-200'
+                        : 'bg-white border-slate-200 text-slate-800'
+                    }`}
+                  >
+                    <div
+                      className={`text-xs mb-3 pb-2 border-b flex items-center justify-between ${
+                        isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 font-semibold">
+                        <Layers className="w-4 h-4 text-indigo-500" />
+                        XML 节点树形解析器
+                      </span>
+                      <span
+                        className={`font-mono text-xs px-2 py-0.5 rounded ${
+                          parseValidation.doc
+                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                        }`}
+                      >
+                        {parseValidation.doc ? '解析正常' : '解析异常'}
+                      </span>
+                    </div>
+
+                    {parseValidation.doc ? (
+                      <XmlNodeTree node={parseValidation.doc.documentElement} isDark={isDark} />
+                    ) : (
+                      <pre className="whitespace-pre-wrap">{file.content}</pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Render for Markdown */}
+            {isMd && (
+              <div
+                className={`w-full h-full min-h-0 flex-1 p-6 overflow-auto rounded-2xl border text-sm smooth-scroll ${
                   isDark
                     ? 'bg-slate-950 border-slate-800 text-slate-200'
                     : 'bg-white border-slate-200 text-slate-800'
                 }`}
               >
-                <div
-                  className={`text-xs mb-3 pb-2 border-b flex items-center justify-between ${
-                    isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5 font-semibold">
-                    <Layers className="w-4 h-4 text-indigo-500" />
-                    XML 节点树形解析器
-                  </span>
-                  <span
-                    className={`font-mono text-xs px-2 py-0.5 rounded ${
-                      parseValidation.doc
-                        ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                        : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
-                    }`}
-                  >
-                    {parseValidation.doc ? '解析正常' : '解析异常'}
-                  </span>
-                </div>
-
-                {parseValidation.doc ? (
-                  <XmlNodeTree node={parseValidation.doc.documentElement} isDark={isDark} />
-                ) : (
-                  <pre className="whitespace-pre-wrap">{file.content}</pre>
-                )}
+                <MarkdownPreview content={cleanedContent} isDark={isDark} />
               </div>
             )}
-          </div>
-        )}
 
-        {/* Render for Markdown */}
-        {isMd && (
-          <div
-            className={`w-full h-full p-6 overflow-auto rounded-2xl border text-sm smooth-scroll ${
-              isDark
-                ? 'bg-slate-950 border-slate-800 text-slate-200'
-                : 'bg-white border-slate-200 text-slate-800'
-            }`}
-          >
-            <MarkdownPreview content={file.content} isDark={isDark} />
-          </div>
-        )}
-
-        {/* Fallback for other files */}
-        {!isSvg && !isHtml && !isXml && !isMd && (
-          <div
-            className={`w-full h-full p-4 overflow-auto rounded-2xl border font-mono text-xs smooth-scroll ${
-              isDark
-                ? 'bg-slate-950 border-slate-800 text-slate-200'
-                : 'bg-white border-slate-200 text-slate-800'
-            }`}
-          >
-            <pre className="whitespace-pre-wrap">{file.content}</pre>
-          </div>
+            {/* Fallback for other files */}
+            {!isSvg && !isHtml && !isXml && !isMd && (
+              <div
+                className={`w-full h-full min-h-0 flex-1 p-4 overflow-auto rounded-2xl border font-mono text-xs smooth-scroll ${
+                  isDark
+                    ? 'bg-slate-950 border-slate-800 text-slate-200'
+                    : 'bg-white border-slate-200 text-slate-800'
+                }`}
+              >
+                <pre className="whitespace-pre-wrap">{cleanedContent}</pre>
+              </div>
+            )}
+          </>
         )}
       </div>
 
       {/* HTML Console Drawer */}
-      {isHtml && showConsole && (
+      {isHtml && showConsole && !isEmpty && (
         <div
-          className={`h-44 border-t p-3 font-mono text-xs overflow-y-auto smooth-scroll ${
+          className={`h-40 border-t p-3 font-mono text-xs overflow-y-auto smooth-scroll shrink-0 ${
             isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50'
           }`}
         >
@@ -681,9 +698,9 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file }) => {
       )}
 
       {/* Color Palette bar for Vector / SVG */}
-      {(isSvg || androidSvgConversion) && extractedColors.length > 0 && (
+      {(isSvg || androidSvgConversion) && extractedColors.length > 0 && !isEmpty && (
         <div
-          className={`px-3 py-1.5 border-t flex items-center justify-between text-xs select-none ${
+          className={`px-3 py-1.5 border-t flex items-center justify-between text-xs select-none shrink-0 ${
             isDark
               ? 'bg-slate-900 border-slate-800/80 text-slate-400'
               : 'bg-slate-50 border-slate-200 text-slate-600'
@@ -828,10 +845,7 @@ const MarkdownPreview: React.FC<{ content: string; isDark?: boolean }> = ({
         }
         if (line.startsWith('### ')) {
           return (
-            <h3
-              key={idx}
-              className={`text-lg font-semibold mt-2 text-indigo-500`}
-            >
+            <h3 key={idx} className="text-lg font-semibold mt-2 text-indigo-500">
               {line.slice(4)}
             </h3>
           );

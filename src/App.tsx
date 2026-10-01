@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CodeFile, ActiveTab } from './types';
 import { INITIAL_FILES } from './utils/templates';
-import { detectCodeType } from './utils/codeDetect';
+import { detectCodeType, cleanPastedCode } from './utils/codeDetect';
 import { TopAppBar } from './components/TopAppBar';
 import { BottomNavBar } from './components/BottomNavBar';
 import { CodeEditor } from './components/CodeEditor';
@@ -11,12 +11,14 @@ import { FileListDrawer } from './components/FileListDrawer';
 import { NewFileDialog } from './components/NewFileDialog';
 import { SmartPasteModal } from './components/SmartPasteModal';
 import { GitHubExportModal } from './components/GitHubExportModal';
+import { UpdateModal } from './components/UpdateModal';
 import { AndroidPhoneFrame } from './components/AndroidPhoneFrame';
 import { useTheme } from './context/ThemeContext';
-import { UploadCloud, CheckCircle2 } from 'lucide-react';
+import { checkForAppUpdates, UpdateInfo } from './services/updater';
+import { UploadCloud, CheckCircle2, ArrowUpCircle } from 'lucide-react';
 
-const STORAGE_KEY = 'rendercraft_files_v2';
-const ACTIVE_FILE_KEY = 'rendercraft_active_file_v2';
+const STORAGE_KEY = 'rendercraft_files_v3';
+const ACTIVE_FILE_KEY = 'rendercraft_active_file_v3';
 
 export default function App() {
   const { isDark } = useTheme();
@@ -54,9 +56,27 @@ export default function App() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isSmartPasteOpen, setIsSmartPasteOpen] = useState(false);
   const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isPhoneFrameActive, setIsPhoneFrameActive] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // In-app Auto Update State
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+
+  // Auto-check for updates on app mount
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        const info = await checkForAppUpdates();
+        setUpdateInfo(info);
+      } catch (err) {
+        console.error('Update check failed', err);
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Sync files to localStorage
   useEffect(() => {
@@ -81,7 +101,7 @@ export default function App() {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((current) => (current === msg ? null : current));
-    }, 2800);
+    }, 3000);
   };
 
   // Handlers
@@ -108,7 +128,6 @@ export default function App() {
     };
     setFiles((prev) => [newFile, ...prev]);
     setActiveFileId(newId);
-    // If it has content, switch directly to preview so user sees the rendered result immediately!
     if (newFile.content.trim()) {
       setActiveTab('preview');
     } else {
@@ -173,13 +192,27 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  const handleSmartPasteApply = (code: string) => {
-    handleUpdateContent(code);
+  // Smart Paste Handler: applies clean code, updates extension if needed, and switches to preview!
+  const handleSmartPasteApply = (code: string, newExt?: string) => {
+    if (!activeFile) return;
+    const cleaned = cleanPastedCode(code);
+    setFiles((prev) =>
+      prev.map((f) =>
+        f.id === activeFile.id
+          ? {
+              ...f,
+              content: cleaned,
+              extension: newExt && newExt !== f.extension ? newExt : f.extension,
+              updatedAt: Date.now(),
+            }
+          : f
+      )
+    );
     setActiveTab('preview');
-    showToast('代码已覆盖并即时渲染');
+    showToast('代码已覆盖并即时渲染！');
   };
 
-  // Local File Import System (Multiple Files Supported)
+  // Local File Import System
   const handleImportFiles = (fileList: FileList) => {
     const incoming = Array.from(fileList);
     if (incoming.length === 0) return;
@@ -201,7 +234,6 @@ export default function App() {
           ext = originalName.substring(lastDot + 1).toLowerCase();
         }
 
-        // If no ext or unknown, detect from text content
         if (!ext) {
           const detected = detectCodeType(text);
           ext = detected.extension;
@@ -212,7 +244,7 @@ export default function App() {
           id: newId,
           name,
           extension: ext,
-          content: text,
+          content: cleanPastedCode(text),
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };
@@ -232,7 +264,7 @@ export default function App() {
     });
   };
 
-  // Global Drag & Drop listener for files
+  // Global Drag & Drop listener
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.types.includes('Files')) {
@@ -242,7 +274,6 @@ export default function App() {
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    // Only set false if leaving window
     if (!e.relatedTarget || (e.relatedTarget as HTMLElement).nodeName === 'HTML') {
       setIsDraggingFile(false);
     }
@@ -261,69 +292,62 @@ export default function App() {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className="w-full h-full min-h-[100dvh]"
+      className="w-full h-screen h-[100dvh] flex flex-col overflow-hidden select-text"
     >
       <AndroidPhoneFrame
         isFrameActive={isPhoneFrameActive}
         onToggleFrame={() => setIsPhoneFrameActive(!isPhoneFrameActive)}
       >
         <div
-          className={`w-full h-full flex flex-col overflow-hidden select-text font-sans transition-colors duration-200 ${
+          className={`w-full h-full min-h-0 flex-1 flex flex-col overflow-hidden select-text font-sans transition-colors duration-200 ${
             isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
           }`}
         >
-          {/* Top App Bar */}
+          {/* Top App Bar with status bar avoidance */}
           <TopAppBar
             activeFile={activeFile}
             onOpenFilesDrawer={() => setIsFilesDrawerOpen(true)}
             onOpenNewModal={() => setIsNewModalOpen(true)}
             onOpenSmartPaste={() => setIsSmartPasteOpen(true)}
             onOpenGitHubModal={() => setIsGitHubModalOpen(true)}
+            onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
+            updateInfo={updateInfo}
             onImportFiles={handleImportFiles}
             isPhoneFrameActive={isPhoneFrameActive}
             onTogglePhoneFrame={() => setIsPhoneFrameActive(!isPhoneFrameActive)}
           />
 
-          {/* Main Content Workspace with GPU accelerated Transitions */}
-          <main className="flex-1 relative overflow-hidden p-2 sm:p-3 flex flex-col">
+          {/* Update Available Floating Prompt */}
+          {updateInfo?.hasUpdate && (
+            <div
+              onClick={() => setIsUpdateModalOpen(true)}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 px-3 py-1.5 text-white text-xs font-semibold flex items-center justify-between cursor-pointer shadow-sm shrink-0 active:opacity-90"
+            >
+              <div className="flex items-center gap-2">
+                <ArrowUpCircle className="w-4 h-4 animate-bounce" />
+                <span>检测到上游新版本 v{updateInfo.latestVersion} 已就绪</span>
+              </div>
+              <span className="text-[11px] underline underline-offset-2">点击在应用内立即更新 →</span>
+            </div>
+          )}
+
+          {/* Main Content Workspace: Robust Direct Flex Rendering */}
+          <main className="flex-1 w-full min-h-0 relative overflow-hidden p-2 sm:p-3 flex flex-col">
             {activeFile ? (
-              <div className="w-full h-full relative">
+              <div className="w-full h-full min-h-0 flex-1 flex flex-col">
                 {/* 1. Preview Tab */}
-                <div
-                  className={`w-full h-full absolute inset-0 transition-opacity duration-150 ${
-                    activeTab === 'preview'
-                      ? 'opacity-100 z-10 pointer-events-auto'
-                      : 'opacity-0 z-0 pointer-events-none'
-                  }`}
-                >
-                  <RenderPreview file={activeFile} />
-                </div>
+                {activeTab === 'preview' && (
+                  <div className="w-full h-full min-h-0 flex-1 flex flex-col">
+                    <RenderPreview
+                      file={activeFile}
+                      onOpenSmartPaste={() => setIsSmartPasteOpen(true)}
+                    />
+                  </div>
+                )}
 
                 {/* 2. Editor Tab */}
-                <div
-                  className={`w-full h-full absolute inset-0 transition-opacity duration-150 ${
-                    activeTab === 'editor'
-                      ? 'opacity-100 z-10 pointer-events-auto'
-                      : 'opacity-0 z-0 pointer-events-none'
-                  }`}
-                >
-                  <CodeEditor
-                    file={activeFile}
-                    onChangeContent={handleUpdateContent}
-                    onOpenSmartPaste={() => setIsSmartPasteOpen(true)}
-                    onImportFiles={handleImportFiles}
-                  />
-                </div>
-
-                {/* 3. Split Screen Tab */}
-                <div
-                  className={`w-full h-full absolute inset-0 flex flex-col md:flex-row gap-2.5 transition-opacity duration-150 ${
-                    activeTab === 'split'
-                      ? 'opacity-100 z-10 pointer-events-auto'
-                      : 'opacity-0 z-0 pointer-events-none'
-                  }`}
-                >
-                  <div className="flex-1 h-1/2 md:h-full min-h-0">
+                {activeTab === 'editor' && (
+                  <div className="w-full h-full min-h-0 flex-1 flex flex-col">
                     <CodeEditor
                       file={activeFile}
                       onChangeContent={handleUpdateContent}
@@ -331,10 +355,27 @@ export default function App() {
                       onImportFiles={handleImportFiles}
                     />
                   </div>
-                  <div className="flex-1 h-1/2 md:h-full min-h-0">
-                    <RenderPreview file={activeFile} />
+                )}
+
+                {/* 3. Split Screen Tab */}
+                {activeTab === 'split' && (
+                  <div className="w-full h-full min-h-0 flex-1 flex flex-col md:flex-row gap-2.5">
+                    <div className="flex-1 h-1/2 md:h-full min-h-0 flex flex-col">
+                      <CodeEditor
+                        file={activeFile}
+                        onChangeContent={handleUpdateContent}
+                        onOpenSmartPaste={() => setIsSmartPasteOpen(true)}
+                        onImportFiles={handleImportFiles}
+                      />
+                    </div>
+                    <div className="flex-1 h-1/2 md:h-full min-h-0 flex flex-col">
+                      <RenderPreview
+                        file={activeFile}
+                        onOpenSmartPaste={() => setIsSmartPasteOpen(true)}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               <div
@@ -373,7 +414,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-2xl bg-slate-900/95 text-white border border-slate-700/80 shadow-2xl backdrop-blur-md flex items-center gap-2 text-xs font-semibold pointer-events-none"
+                className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-2xl bg-slate-900/95 text-white border border-slate-700/80 shadow-2xl backdrop-blur-md flex items-center gap-2 text-xs font-semibold pointer-events-none whitespace-nowrap"
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>{toastMessage}</span>
@@ -437,6 +478,13 @@ export default function App() {
             isOpen={isGitHubModalOpen}
             onClose={() => setIsGitHubModalOpen(false)}
             files={files}
+          />
+
+          <UpdateModal
+            isOpen={isUpdateModalOpen}
+            onClose={() => setIsUpdateModalOpen(false)}
+            updateInfo={updateInfo}
+            onUpdateInfoChanged={(newInfo) => setUpdateInfo(newInfo)}
           />
         </div>
       </AndroidPhoneFrame>

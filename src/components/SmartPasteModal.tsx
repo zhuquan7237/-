@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { X, ClipboardPaste, Sparkles, FilePlus2, CheckCircle2, ArrowRight } from 'lucide-react';
-import { detectCodeType, formatBytes } from '../utils/codeDetect';
+import { X, ClipboardPaste, Sparkles, FilePlus2, CheckCircle2, ArrowRight, Check } from 'lucide-react';
+import { detectCodeType, formatBytes, cleanPastedCode } from '../utils/codeDetect';
 import { CodeFile } from '../types';
 import { useTheme } from '../context/ThemeContext';
 
@@ -9,7 +9,7 @@ interface SmartPasteModalProps {
   isOpen: boolean;
   onClose: () => void;
   activeFile: CodeFile | null;
-  onApplyToCurrent: (code: string) => void;
+  onApplyToCurrent: (code: string, newExt?: string) => void;
   onCreateNewAndOpen: (file: Omit<CodeFile, 'id' | 'createdAt' | 'updatedAt'>) => void;
 }
 
@@ -39,7 +39,7 @@ export const SmartPasteModal: React.FC<SmartPasteModalProps> = ({
   const handleReadClipboard = async () => {
     try {
       if (!navigator.clipboard?.readText) {
-        setClipboardError('浏览器限制直接读取剪贴板，请在文本框内长按或使用 Ctrl+V 粘贴');
+        setClipboardError('浏览器限制直接读取剪贴板，请长按或在输入框内使用 Ctrl+V 粘贴');
         return;
       }
       const text = await navigator.clipboard.readText();
@@ -50,12 +50,13 @@ export const SmartPasteModal: React.FC<SmartPasteModalProps> = ({
         setClipboardError('剪贴板中暂无文本内容');
       }
     } catch {
-      setClipboardError('未能读取剪贴板权限，请在输入框内长按或使用快捷键直接粘贴');
+      setClipboardError('未能读取剪贴板权限，请长按输入框或使用快捷键直接粘贴');
     }
   };
 
   const handleCreateNew = () => {
-    if (!pastedCode.trim()) return;
+    const cleaned = cleanPastedCode(pastedCode);
+    if (!cleaned) return;
     const now = new Date();
     const timeStr = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
     const newName = `ai_${detected.extension}_${timeStr}`;
@@ -63,21 +64,22 @@ export const SmartPasteModal: React.FC<SmartPasteModalProps> = ({
     onCreateNewAndOpen({
       name: newName,
       extension: detected.extension,
-      content: pastedCode,
+      content: cleaned,
     });
     setPastedCode('');
     onClose();
   };
 
-  const handleReplaceCurrent = () => {
-    if (!pastedCode.trim() || !activeFile) return;
-    onApplyToCurrent(pastedCode);
+  const handleApplyToCurrent = () => {
+    const cleaned = cleanPastedCode(pastedCode);
+    if (!cleaned) return;
+    onApplyToCurrent(cleaned, detected.extension);
     setPastedCode('');
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/65 backdrop-blur-xs animate-fadeIn">
       <motion.div
         initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -107,11 +109,11 @@ export const SmartPasteModal: React.FC<SmartPasteModalProps> = ({
                     isDark ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-700'
                   }`}
                 >
-                  智能嗅探
+                  自动清洗
                 </span>
               </div>
               <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                粘贴 AI 生成的 SVG / HTML / XML，自动匹配格式并秒级预览
+                自动过滤 Markdown 代码框（```），识别 SVG / HTML / XML 立即呈现渲染
               </p>
             </div>
           </div>
@@ -157,7 +159,7 @@ export const SmartPasteModal: React.FC<SmartPasteModalProps> = ({
           <textarea
             value={pastedCode}
             onChange={(e) => setPastedCode(e.target.value)}
-            placeholder="请在此粘贴 AI 生成的代码（例如 <svg>...</svg> 或 <!DOCTYPE html> 或 <?xml...）"
+            placeholder="请在此粘贴 AI 生成的代码（如 <svg>...</svg> 或 <!DOCTYPE html> 或 <?xml...）"
             className={`w-full h-full p-3.5 rounded-2xl text-xs font-mono resize-none leading-relaxed transition-all focus:outline-none focus:ring-1 focus:ring-indigo-500 border ${
               isDark
                 ? 'bg-slate-950/80 border-slate-700/80 text-white placeholder-slate-500'
@@ -199,31 +201,27 @@ export const SmartPasteModal: React.FC<SmartPasteModalProps> = ({
             isDark ? 'border-slate-800' : 'border-slate-100'
           }`}
         >
+          {/* Primary Action: Apply and View Render Immediately */}
+          <button
+            type="button"
+            disabled={!pastedCode.trim()}
+            onClick={handleApplyToCurrent}
+            className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-xs shadow-md shadow-emerald-600/30 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Check className="w-4 h-4" />
+            <span>应用到当前并立即渲染</span>
+          </button>
+
+          {/* Secondary Action: Create New File */}
           <button
             type="button"
             disabled={!pastedCode.trim()}
             onClick={handleCreateNew}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 disabled:opacity-40 disabled:pointer-events-none text-white font-semibold text-xs shadow-md shadow-indigo-600/25 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            className="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:pointer-events-none text-white font-semibold text-xs shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
             <FilePlus2 className="w-4 h-4" />
-            <span>新建 .{detected.extension} 并立即渲染</span>
-            <ArrowRight className="w-3.5 h-3.5 opacity-80" />
+            <span>新建 .{detected.extension}</span>
           </button>
-
-          {activeFile && (
-            <button
-              type="button"
-              disabled={!pastedCode.trim()}
-              onClick={handleReplaceCurrent}
-              className={`py-2.5 px-4 rounded-xl border disabled:opacity-40 disabled:pointer-events-none font-semibold text-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap ${
-                isDark
-                  ? 'border-slate-700 hover:bg-slate-800 text-slate-300'
-                  : 'border-slate-200 hover:bg-slate-100 text-slate-700'
-              }`}
-            >
-              替换当前文件 ({activeFile.name}.{activeFile.extension})
-            </button>
-          )}
         </div>
       </motion.div>
     </div>

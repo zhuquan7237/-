@@ -10,9 +10,11 @@ import {
   Upload,
   Sun,
   Moon,
+  ArrowUpCircle,
 } from 'lucide-react';
 import { CodeFile } from '../types';
 import { useTheme } from '../context/ThemeContext';
+import { UpdateInfo } from '../services/updater';
 
 interface TopAppBarProps {
   activeFile: CodeFile | null;
@@ -20,6 +22,8 @@ interface TopAppBarProps {
   onOpenNewModal: () => void;
   onOpenSmartPaste: () => void;
   onOpenGitHubModal: () => void;
+  onOpenUpdateModal: () => void;
+  updateInfo: UpdateInfo | null;
   onImportFiles: (files: FileList) => void;
   isPhoneFrameActive: boolean;
   onTogglePhoneFrame: () => void;
@@ -31,28 +35,35 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
   onOpenNewModal,
   onOpenSmartPaste,
   onOpenGitHubModal,
+  onOpenUpdateModal,
+  updateInfo,
   onImportFiles,
   isPhoneFrameActive,
   onTogglePhoneFrame,
 }) => {
-  const { theme, toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       onImportFiles(e.target.files);
-      // Reset input so same file can be re-imported if needed
       e.target.value = '';
     }
   };
 
+  const hasUpdate = updateInfo?.hasUpdate;
+
   return (
     <header
-      className={`min-h-[56px] px-3 sm:px-4 border-b flex items-center justify-between z-30 shrink-0 select-none transition-colors duration-200 ${
+      className={`w-full border-b flex items-center justify-between z-30 shrink-0 select-none transition-colors duration-200 ${
         isDark
-          ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 backdrop-blur-md'
-          : 'bg-white/90 border-slate-200/90 text-slate-800 backdrop-blur-md shadow-xs'
-      } ${!isPhoneFrameActive ? 'pt-[max(env(safe-area-inset-top),8px)] pb-1.5' : 'py-2'}`}
+          ? 'bg-slate-900/95 border-slate-800 text-slate-100 backdrop-blur-md'
+          : 'bg-white/95 border-slate-200 text-slate-800 backdrop-blur-md shadow-xs'
+      } ${
+        !isPhoneFrameActive
+          ? 'pt-[max(env(safe-area-inset-top,0px),34px)] pb-2 px-3 sm:px-4 min-h-[74px] sm:min-h-[58px]'
+          : 'py-2 px-3 sm:px-4 min-h-[56px]'
+      }`}
     >
       {/* Zone 1: File Drawer Trigger & Active File Badge */}
       <div className="flex items-center gap-2 min-w-0">
@@ -90,7 +101,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
               .{activeFile.extension}
             </span>
             <span
-              className={`text-xs font-medium truncate font-mono max-w-[100px] sm:max-w-[160px] ${
+              className={`text-xs font-semibold truncate font-mono max-w-[90px] xs:max-w-[130px] sm:max-w-[180px] ${
                 isDark ? 'text-slate-200' : 'text-slate-900'
               }`}
             >
@@ -102,7 +113,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
 
       {/* Zone 2 & 3: Quick Functional Actions */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Local File Import Hidden Input */}
+        {/* Hidden Local File Input */}
         <input
           ref={fileInputRef}
           type="file"
@@ -115,12 +126,12 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
         {/* Import Local File Button */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-medium transition-all active:scale-95 cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer whitespace-nowrap ${
             isDark
               ? 'bg-slate-800 hover:bg-slate-700 text-slate-200'
               : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
           }`}
-          title="导入电脑或手机本地存储中的文件 (.svg, .html, .xml, .json 等)"
+          title="导入电脑或手机已有代码文件"
         >
           <Upload className="w-3.5 h-3.5 text-indigo-500" />
           <span className="hidden sm:inline">导入</span>
@@ -129,18 +140,41 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
         {/* Smart AI Paste Button */}
         <button
           onClick={onOpenSmartPaste}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-xs font-medium shadow-sm shadow-indigo-600/30 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-xs font-semibold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
           title="快速粘贴 AI 代码并自动识别格式渲染"
         >
           <ClipboardPaste className="w-3.5 h-3.5" />
           <span>粘贴代码</span>
         </button>
 
+        {/* In-app Auto Update Trigger Button */}
+        <button
+          onClick={onOpenUpdateModal}
+          className={`relative p-2 rounded-xl text-xs font-medium active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 ${
+            hasUpdate
+              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/40 ring-1 ring-indigo-500/30'
+              : isDark
+              ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-300'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+          }`}
+          title={hasUpdate ? '发现新版本，点击一键在线更新' : '检查软件在线更新'}
+        >
+          <ArrowUpCircle className={`w-4 h-4 ${hasUpdate ? 'text-indigo-400 animate-bounce' : ''}`} />
+          {hasUpdate && (
+            <span className="hidden md:inline text-xs font-bold text-indigo-300">
+              新版本
+            </span>
+          )}
+          {hasUpdate && (
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
+          )}
+        </button>
+
         {/* Direct APK Download Button */}
         <a
           href="/RenderCraft-v1.0.0.apk"
           download="RenderCraft-v1.0.0.apk"
-          className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold shadow-sm shadow-emerald-600/30 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+          className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer whitespace-nowrap"
           title="直接下载打包好的 Android APK 安装包 (4.6 MB)"
         >
           <Download className="w-3.5 h-3.5" />
@@ -169,7 +203,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
               ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200'
               : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
           }`}
-          title="新建文件 (自定义格式与后缀)"
+          title="新建代码文件"
         >
           <Plus className="w-4 h-4" />
           <span className="hidden md:inline">新建</span>
@@ -183,7 +217,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
               ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-300'
               : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
           }`}
-          title={isPhoneFrameActive ? '切换到全屏桌面布局' : '切换到手机真机尺寸模拟'}
+          title={isPhoneFrameActive ? '切换到全屏桌面布局' : '切换到手机尺寸模拟'}
         >
           {isPhoneFrameActive ? (
             <Monitor className="w-4 h-4 text-indigo-500" />

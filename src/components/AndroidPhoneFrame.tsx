@@ -33,7 +33,7 @@ export const AndroidPhoneFrame: React.FC<AndroidPhoneFrameProps> = ({
   if (!isFrameActive) {
     return (
       <div
-        className={`w-full h-full min-h-[100dvh] flex flex-col overflow-hidden select-text ${
+        className={`w-full h-screen h-[100dvh] flex flex-col overflow-hidden select-text ${
           isDark ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
         }`}
       >
