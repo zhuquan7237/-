@@ -267,12 +267,16 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <ArrowUpCircle className="w-4 h-4 text-indigo-500" />
-                      <span>在线检查更新</span>
+                      <Bell className="w-4 h-4 text-indigo-500" />
+                      <span>版本状态与通知</span>
                     </div>
-                    {hasUpdate && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-500 text-white">
-                        新版本
+                    {hasUpdate ? (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500 text-white">
+                        有更新
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-mono opacity-60">
+                        v1.0.1 最新
                       </span>
                     )}
                   </button>

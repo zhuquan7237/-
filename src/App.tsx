@@ -15,7 +15,7 @@ import { UpdateModal } from './components/UpdateModal';
 import { AndroidPhoneFrame } from './components/AndroidPhoneFrame';
 import { useTheme } from './context/ThemeContext';
 import { checkForAppUpdates, UpdateInfo } from './services/updater';
-import { UploadCloud, CheckCircle2, ArrowUpCircle } from 'lucide-react';
+import { UploadCloud, CheckCircle2, ArrowUpCircle, Bell, X } from 'lucide-react';
 
 const STORAGE_KEY = 'rendercraft_files_v3';
 const ACTIVE_FILE_KEY = 'rendercraft_active_file_v3';
@@ -63,6 +63,7 @@ export default function App() {
 
   // In-app Auto Update State
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [isNoticeDismissed, setIsNoticeDismissed] = useState(false);
 
   // Auto-check for updates on app mount
   useEffect(() => {
@@ -317,17 +318,26 @@ export default function App() {
             onTogglePhoneFrame={() => setIsPhoneFrameActive(!isPhoneFrameActive)}
           />
 
-          {/* Update Available Floating Prompt */}
-          {updateInfo?.hasUpdate && (
-            <div
-              onClick={() => setIsUpdateModalOpen(true)}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 px-3 py-1.5 text-white text-xs font-semibold flex items-center justify-between cursor-pointer shadow-sm shrink-0 active:opacity-90"
-            >
-              <div className="flex items-center gap-2">
-                <ArrowUpCircle className="w-4 h-4 animate-bounce" />
-                <span>检测到上游新版本 v{updateInfo.latestVersion} 已就绪</span>
+          {/* System Notification: ONLY shown when there is an actual newer version available AND user has not dismissed it */}
+          {updateInfo?.hasUpdate && !isNoticeDismissed && (
+            <div className="bg-amber-600/90 text-white px-3 py-1.5 text-xs font-semibold flex items-center justify-between shadow-sm shrink-0">
+              <div
+                onClick={() => setIsUpdateModalOpen(true)}
+                className="flex items-center gap-2 cursor-pointer hover:underline flex-1 truncate"
+              >
+                <Bell className="w-4 h-4 shrink-0 text-amber-200" />
+                <span className="truncate">【系统通知】上游有新版本 v{updateInfo.latestVersion} 发布，点击查看详情与下载</span>
               </div>
-              <span className="text-[11px] underline underline-offset-2">点击在应用内立即更新 →</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsNoticeDismissed(true);
+                }}
+                className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-black/20 text-white ml-2 cursor-pointer shrink-0"
+                title="忽略本次通知"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           )}
 
