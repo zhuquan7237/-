@@ -62,7 +62,7 @@ export async function checkForAppUpdates(): Promise<UpdateInfo> {
 
   // Strategy 2: Check GitHub Releases API
   try {
-    const ghRes = await fetch('https://api.github.com/repos/zhuquan7237/-/releases/latest');
+    const ghRes = await fetch('https://api.github.com/repos/zhuquan7237/RenderCraft/releases/latest');
     if (ghRes.ok) {
       const ghData = await ghRes.json();
       const tagName = (ghData.tag_name || '1.0.0').replace(/^v/i, '');

@@ -133,7 +133,7 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({
                 立即下载 APK
               </a>
               <a
-                href="https://github.com/zhuquan7237/-/releases/tag/v1.0.0"
+                href="https://github.com/zhuquan7237/RenderCraft/releases"
                 target="_blank"
                 rel="noreferrer"
                 className={`px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap border ${

@@ -1,7 +1,8 @@
 {
-  "name": "react-example",
+  "name": "rendercraft",
+  "version": "1.0.1",
+  "description": "RenderCraft - 极简代码预览与渲染工作室 (Android & Web)。专为移动端打造的超轻量代码渲染神器，支持一键粘贴 AI 代码，支持 SVG、HTML、XML 等格式实时渲染与自定义后缀文件管理，内置应用内在线自动升级。",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",

@@ -4,13 +4,14 @@
   "releaseDate": "2026-10-01",
   "title": "RenderCraft v1.0.1 正式发布",
   "changelog": [
-    "修复真机顶部状态栏避让：提供 34px 安全内边距，按键与系统时间/电量绝不重叠",
-    "修复代码粘贴后工作区高度计算，确保代码编辑与实时渲染100%立即可见",
-    "新增 AI 代码粘贴自动过滤：智能去除 ```xml 或 ```html 等 Markdown 标记",
-    "新增应用内在线自动更新检查与一键下载最新 APK，无需再进仓库",
-    "优化白天与黑夜双主题切换体验，高刷屏丝滑跟手"
+    "全面规范手机顶部单行导航栏，杜绝多按钮重叠，次级功能收入更多菜单",
+    "独立真机系统状态栏 28px~34px 安全避让空间，绝不挡住时间与电池",
+    "修复代码粘贴后工作区视口高度折叠问题，代码与渲染保证 100% 满屏立即可见",
+    "内置应用内在线自动升级检测与一键极速下载新版 APK，无需进仓库解拆",
+    "AI 粘贴代码智能净化：自动剥离 ```xml 或 ```html 等 Markdown 标记",
+    "白天白昼与夜间暗黑双主题无缝切换，界面清爽跟手"
   ],
   "apkUrl": "/RenderCraft-v1.0.0.apk",
-  "githubReleaseUrl": "https://github.com/zhuquan7237/-/releases/tag/v1.0.0",
-  "githubDownloadUrl": "https://github.com/zhuquan7237/-/releases/download/v1.0.0/RenderCraft-v1.0.0.apk"
+  "githubReleaseUrl": "https://github.com/zhuquan7237/RenderCraft/releases",
+  "githubDownloadUrl": "https://github.com/zhuquan7237/RenderCraft/releases/download/v1.0.0/RenderCraft-v1.0.0.apk"
 }
