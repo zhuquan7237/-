@@ -141,18 +141,44 @@ git push -u origin main
         {/* Export All Files Button */}
         <div className="p-3.5 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
           <div>
-            <div className="text-xs font-semibold text-white">导出当前所有代码与文件包</div>
-            <div className="text-[11px] text-slate-400">
-              包含当前创建的 {files.length} 个自定义文件（SVG、HTML、XML 等）
+            <div className="text-xs font-semibold text-white flex items-center gap-2">
+              <span>完整 Android 原生工程 + GitHub 源码归档</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono">
+                487 KB
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              已包含 Gradle 包装器、Android 源代码、GitHub Actions 自动化 APK 构建脚本与全部代码
             </div>
           </div>
-          <button
-            onClick={handleDownloadAllJson}
-            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium flex items-center gap-1.5 shadow-md shadow-indigo-600/30 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
-          >
-            <Download className="w-4 h-4" />
-            一键打包下载 JSON
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href="/rendercraft-android-project.tar.gz"
+              download="rendercraft-android-project.tar.gz"
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs font-medium flex items-center gap-1.5 shadow-md shadow-indigo-600/30 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
+            >
+              <Download className="w-4 h-4" />
+              下载完整工程包 (.tar.gz)
+            </a>
+            <button
+              onClick={handleDownloadAllJson}
+              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium cursor-pointer active:scale-95 transition-all whitespace-nowrap"
+              title="仅导出文件代码为 JSON"
+            >
+              仅代码 JSON
+            </button>
+          </div>
+        </div>
+
+        {/* Why GitHub needs remote auth explanation card */}
+        <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800 mb-4 text-xs">
+          <div className="text-slate-200 font-medium mb-1 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span>关于 GitHub 推送与授权说明</span>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            您在网页浏览器中登录的 GitHub 属于个人前端凭证。为了保障您的 GitHub 账号安全，云端沙箱容器在没有仓库写入令牌（Personal Access Token）和具体仓库地址的情况下，不会也无法读取您的浏览器 Cookie 静默推送。
+          </p>
         </div>
 
         {/* GitHub Push Guide */}
