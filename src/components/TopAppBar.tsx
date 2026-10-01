@@ -278,8 +278,8 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                   </button>
 
                   <a
-                    href="/RenderCraft-v1.0.0.apk"
-                    download="RenderCraft-v1.0.0.apk"
+                    href="/RenderCraft-v1.0.1.apk"
+                    download="RenderCraft-v1.0.1.apk"
                     onClick={() => setIsMoreMenuOpen(false)}
                     className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-colors ${
                       isDark ? 'hover:bg-slate-800' : 'hover:bg-slate-100'

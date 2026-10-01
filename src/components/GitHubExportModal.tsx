@@ -125,8 +125,8 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <a
-                href="/RenderCraft-v1.0.0.apk"
-                download="RenderCraft-v1.0.0.apk"
+                href="/RenderCraft-v1.0.1.apk"
+                download="RenderCraft-v1.0.1.apk"
                 className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm shadow-emerald-600/30 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
               >
                 <Download className="w-4 h-4" />

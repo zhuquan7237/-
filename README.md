@@ -73,7 +73,7 @@
 
 ### 方式一：直接下载预构建 Android APK
 您可以直接下载由 GitHub Actions 官方云端构建的原生安装包：
-- 📲 **[下载 RenderCraft-v1.0.0.apk (4.6 MB)](https://github.com/zhuquan7237/RenderCraft/releases/download/v1.0.0/RenderCraft-v1.0.0.apk)**
+- 📲 **[下载 RenderCraft-v1.0.1.apk (最新正式版)](https://github.com/zhuquan7237/RenderCraft/releases/download/v1.0.1/RenderCraft-v1.0.1.apk)**
 
 > **关于体积说明 (4.6 MB)**：该安装包为标准 Android 原生构建，内置了 AndroidX 核心库、Capacitor 运行时以及全套 CPU 架构（`arm64-v8a`、`armeabi-v7a`、`x86`、`x86_64`）兼容库。对比常规移动端混合框架动辄 40MB~80MB 的体积，4.6 MB 极为小巧。而其中的 Web 核心静态资源压缩后仅约 140 KB。
 
