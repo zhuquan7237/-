@@ -57,22 +57,20 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const gitCommands = `# 1. 初始化 Git 本地仓库
-git init
-git add .
-git commit -m "feat: initial commit of RenderCraft Android Code Studio"
-
-# 2. 关联并推送到你的 GitHub 仓库
+  const gitCommands = `# 本地 Git 仓库与 Android 原生工程已初始化完成并打上提交标签！
+# 关联你的 GitHub 远程仓库并推送：
 git remote add origin https://github.com/YOUR_USERNAME/rendercraft-android.git
-git branch -M main
-git push -u origin main`;
+git push -u origin main
 
-  const apkBuildCommands = `# 通过 Capacitor 极速构建超轻量 Android APK (仅需 2MB):
-npm install @capacitor/core @capacitor/cli @capacitor/android
-npx cap init RenderCraft com.rendercraft.app --web-dir dist
-npm run build
-npx cap add android
-npx cap open android  # 在 Android Studio 中一键生成 Release APK`;
+# 推送成功后，GitHub Actions 会全自动编译 Android APK
+# 前往仓库页面中的 Actions -> Artifacts 即可直接下载安装包！`;
+
+  const apkBuildCommands = `# 原生 Android 工程已在 android/ 目录下就绪！
+# 本地如需自行编译：
+./android/gradlew assembleDebug -p android
+
+# 生成的 APK 位于：
+# android/app/build/outputs/apk/debug/app-debug.apk`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/65 backdrop-blur-sm animate-fadeIn">
