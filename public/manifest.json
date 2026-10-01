@@ -1,0 +1,17 @@
+{
+  "name": "RenderCraft - 极简代码预览工作室",
+  "short_name": "RenderCraft",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "description": "轻量级、高流畅度的移动端与多端代码渲染神器。支持 SVG、HTML、XML 等多格式即时渲染。",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

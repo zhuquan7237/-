@@ -1,0 +1,7 @@
+{
+  "name": "RenderCraft - 极简代码预览与渲染工作室",
+  "description": "轻量级、高流畅度的移动端与多端代码渲染神器。支持一键粘贴 AI 代码，支持 SVG、HTML、XML 等多格式即时渲染、自定义后缀文件管理与导出。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

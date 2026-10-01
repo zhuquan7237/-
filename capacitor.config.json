@@ -1,0 +1,13 @@
+{
+  "appId": "com.rendercraft.app",
+  "appName": "RenderCraft",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#020617",
+    "allowMixedContent": true
+  }
+}
