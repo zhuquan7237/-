@@ -203,9 +203,9 @@ export const RenderPreview: React.FC<RenderPreviewProps> = ({ file, onOpenSmartP
           : 'bg-white border-slate-200'
       }`}
     >
-      {/* Top Preview Action Header */}
+      {/* Top Preview Action Header: Single-Line, Never Wraps */}
       <div
-        className={`px-3 py-2 border-b flex flex-wrap items-center justify-between gap-2 text-xs select-none shrink-0 ${
+        className={`h-11 px-3 border-b flex items-center justify-between gap-2 text-xs select-none shrink-0 overflow-x-auto whitespace-nowrap ${
           isDark
             ? 'bg-slate-900 border-slate-800/80 text-slate-300'
             : 'bg-slate-50 border-slate-200/90 text-slate-700'
